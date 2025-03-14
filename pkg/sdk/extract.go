@@ -62,6 +62,7 @@ type ExtractRequest interface {
 	// FieldType returns the type of the field for which the value extraction
 	// is requested. For now, the supported types are:
 	//  - sdk.FieldTypeBool
+	//  - sdk.FieldTypeUint32
 	//  - sdk.FieldTypeUint64
 	//  - sdk.FieldTypeCharBuf
 	//  - sdk.FieldTypeRelTime
@@ -88,6 +89,10 @@ type ExtractRequest interface {
 	// IsList returns true if the field extracts lists of values.
 	IsList() bool
 	//
+	// FieldMetadata can be used to extract dynamic information about
+	// a field, such as FieldMetadataSlice.
+	FieldMetadata() uint32
+	//
 	// SetValue sets the extracted value for the requested field.
 	//
 	// The underlying type of v must be compatible with the field type
@@ -98,6 +103,7 @@ type ExtractRequest interface {
 	// panics if the passed value is not one of the following types (or slices
 	// of them, in case IsList() returns true):
 	//  - sdk.FieldTypeBool: bool
+	//  - sdk.FieldTypeUint32: uint32
 	//  - sdk.FieldTypeUint64: uint64
 	//  - sdk.FieldTypeCharBuf: string
 	//  - sdk.FieldTypeRelTime: time.Duration, *time.Duration
@@ -210,6 +216,10 @@ func (e *extractRequest) IsList() bool {
 	return e.req.flist != 0
 }
 
+func (e *extractRequest) FieldMetadata() uint32 {
+	return uint32(e.req.meta_select)
+}
+
 func (e *extractRequest) boolToU32(v bool) uint32 {
 	if v {
 		return uint32(1)
@@ -243,6 +253,15 @@ func (e *extractRequest) SetValue(v interface{}) {
 		} else {
 			ptr := e.resizeResValPtrs(1, C.sizeof_uint32_t)[0]
 			*((*C.uint32_t)(ptr)) = (C.uint32_t)(e.boolToU32(v.(bool)))
+		}
+	case FieldTypeUint32:
+		if e.IsList() {
+			for i, ptr := range e.resizeResValPtrs(len(v.([]uint32)), C.sizeof_uint32_t) {
+				*((*C.uint32_t)(ptr)) = (C.uint32_t)((v.([]uint32))[i])
+			}
+		} else {
+			ptr := e.resizeResValPtrs(1, C.sizeof_uint32_t)[0]
+			*((*C.uint32_t)(ptr)) = (C.uint32_t)(v.(uint32))
 		}
 	case FieldTypeUint64:
 		if e.IsList() {

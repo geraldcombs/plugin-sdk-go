@@ -73,6 +73,13 @@ func getStrResSSPluingExtractField(t *testing.T, p *_Ctype_ss_plugin_extract_fie
 	return ptr.GoString(unsafe.Pointer((*((**_Ctype_char)(unsafe.Pointer(uintptr(*(*_Ctype_uintptr_t)(unsafe.Pointer(&p.res))) + uintptr(index*_Ciconst_sizeof_uintptr_t)))))))
 }
 
+func getU32ResSSPluingExtractField(t *testing.T, ptr *_Ctype_ss_plugin_extract_field, index int) uint32 {
+	if ptr.res_len < (_Ctype_uint64_t)(index) {
+		t.Errorf("trying to access extract field res at index %d, but res len is %d", index, (int)(ptr.res_len))
+	}
+	return (uint32)(*((*_Ctype_uint32_t)(unsafe.Pointer(uintptr(*(*_Ctype_uintptr_t)(unsafe.Pointer(&ptr.res))) + uintptr(index*_Ciconst_sizeof_uint32_t)))))
+}
+
 func getU64ResSSPluingExtractField(t *testing.T, ptr *_Ctype_ss_plugin_extract_field, index int) uint64 {
 	if ptr.res_len < (_Ctype_uint64_t)(index) {
 		t.Errorf("trying to access extract field res at index %d, but res len is %d", index, (int)(ptr.res_len))
@@ -125,10 +132,12 @@ func TestNewExtractRequestPool(t *testing.T) {
 func TestExtractRequestSetValue(t *testing.T) {
 	// init test data
 	testStr := "test str"
+	testU32 := uint32(5)
 	testU64 := uint64(99)
 	testBool := true
 	testIPv6 := net.IPv6loopback
 	testStrList := make([]string, 0)
+	testU32List := make([]uint32, 0)
 	testU64List := make([]uint64, 0)
 	testBoolList := make([]bool, 0)
 	dataArray := make([]byte, (minResultBufferLen+1)*int(len(testIPv6)))
@@ -138,6 +147,7 @@ func TestExtractRequestSetValue(t *testing.T) {
 	testIPv6List := make([]net.IP, minResultBufferLen+1)
 	for i := 0; i < minResultBufferLen+1; i++ {
 		testStrList = append(testStrList, fmt.Sprintf("test-%d", i))
+		testU32List = append(testU32List, uint32(i))
 		testU64List = append(testU64List, uint64(i))
 		testBoolList = append(testBoolList, i%3 == 0)
 		testIPv6List[i] = dataArray[i*len(testIPv6) : (i+1)*len(testIPv6)]
@@ -153,6 +163,8 @@ func TestExtractRequestSetValue(t *testing.T) {
 	boolListPtr, freeBoolListPtr := allocSSPluginExtractField(6, FieldTypeBool, "test.bool", "", 0, true, true)
 	binPtr, freeBinPtr := allocSSPluginExtractField(7, FieldTypeIPAddr, "test.ipv6addr", "", 0, true, false)
 	binListPtr, freeBinListPtr := allocSSPluginExtractField(8, FieldTypeIPAddr, "test.ipv6addr", "", 0, true, true)
+	u32Ptr, freeU32Ptr := allocSSPluginExtractField(9, FieldTypeUint32, "test.u32", "", 0, true, false)
+	u32ListPtr, freeU32ListPtr := allocSSPluginExtractField(10, FieldTypeUint32, "test.u32", "", 0, true, true)
 	u64Req := pool.Get(0)
 	u64ReqList := pool.Get(1)
 	strReq := pool.Get(2)
@@ -161,6 +173,10 @@ func TestExtractRequestSetValue(t *testing.T) {
 	boolReqList := pool.Get(5)
 	binReq := pool.Get(6)
 	binReqList := pool.Get(7)
+	u32Req := pool.Get(8)
+	u32ReqList := pool.Get(9)
+	u32Req.SetPtr(unsafe.Pointer(u32Ptr))
+	u32ReqList.SetPtr(unsafe.Pointer(u32ListPtr))
 	u64Req.SetPtr(unsafe.Pointer(u64Ptr))
 	u64ReqList.SetPtr(unsafe.Pointer(u64ListPtr))
 	strReq.SetPtr(unsafe.Pointer(strPtr))
@@ -219,6 +235,16 @@ func TestExtractRequestSetValue(t *testing.T) {
 	})
 
 	// check set correct values
+	u32Req.SetValue(testU32)
+	if getU32ResSSPluingExtractField(t, u32Ptr, 0) != testU32 {
+		t.Errorf("expected value '%d', but found '%d'", testU32, getU32ResSSPluingExtractField(t, u32Ptr, 0))
+	}
+	u32ReqList.SetValue(testU32List)
+	for i, d := range testU32List {
+		if getU32ResSSPluingExtractField(t, u32ListPtr, i) != d {
+			t.Errorf("expected value '%d', but found '%d'", testU32, getU32ResSSPluingExtractField(t, u32Ptr, i))
+		}
+	}
 	u64Req.SetValue(testU64)
 	if getU64ResSSPluingExtractField(t, u64Ptr, 0) != testU64 {
 		t.Errorf("expected value '%d', but found '%d'", testU64, getU64ResSSPluingExtractField(t, u64Ptr, 0))
@@ -272,10 +298,11 @@ func TestExtractRequestSetValue(t *testing.T) {
 				}
 			}
 		}
-
 	}
 
 	pool.Free()
+	freeU32Ptr()
+	freeU32ListPtr()
 	freeU64Ptr()
 	freeU64ListPtr()
 	freeStrPtr()

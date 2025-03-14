@@ -52,6 +52,8 @@ const DefaultBatchSize uint32 = 128
 // The full set of values that can be returned in the ftype
 // member of ss_plugin_extract_field structs (ppm_events_public.h).
 const (
+	// A 32bit unsigned integer.
+	FieldTypeUint32 uint32 = 7
 	// A 64bit unsigned integer.
 	FieldTypeUint64 uint32 = 8
 	// A printable buffer of bytes, NULL terminated.
@@ -67,6 +69,18 @@ const (
 	// Either an IPv4 or IPv6 network. The length indicates which one it is.
 	FieldTypeIPNet uint32 = 41
 )
+
+// Optional metadata that can be extracted from a field.
+// Matches ss_plugin_metadata_type (plugin_types.h).
+const (
+	// No metadata; extract the actual field value.
+	FieldMetadataNone uint32 = 0
+	// Extract a Go- and Python-style zero-indexed start and end of the
+	// field's location in the event data as a uint32_t[2]. {0,0} can be
+	// used to indicate that the field doesn't correspond to a location.
+	FieldMetadataSlice uint32 = 1
+)
+
 
 // FieldEntry represents a single field entry that a plugin with field extraction
 // capability can expose.
